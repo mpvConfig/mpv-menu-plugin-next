@@ -16,75 +16,75 @@ local utils = require('mp.utils')
 local o_defaults = {
     font = '',
     font_name = '',
-    font_size = 18,
+    font_size = 29,
     bold = false,
     italic = false,
-    background = '#303030',
+    background = '#2C2C2E',
     border = '#5A5A5F',
-    text = '#F2F2F2',
-    disabled_text = '#8A8A8A',
-    hover = '#4E4E4E',
+    text = '#F2F2F7',
+    disabled_text = '#8E8E93',
+    hover = '#505050',
     hover_bg = '#505050',
     hover_text = '#FFFFFF',
     hover_corner_radius = 0,
-    hover_margin_x = 1,
+    hover_margin_x = 2,
     hover_margin_y = 0,
-    shortcut = '#D0D0D0',
-    hover_shortcut = '',
-    separator = '#BEBEBE',
-    submenu_arrow = '#F0F0F0',
-    arrow = '',
+    shortcut = '#D1D1D6',
+    hover_shortcut = '#FFFFFF',
+    separator = '#636366',
+    submenu_arrow = '#E5E5EA',
+    arrow = '#E5E5EA',
     arrow_alpha = 0,
-    hover_arrow = '',
+    hover_arrow = '#FFFFFF',
     hover_arrow_alpha = 0,
-    check = '#F0F0F0',
+    check = '#F2F2F7',
     shadow = '#000000',
-    bg_alpha = 8,
-    shadow_alpha = 100,
-    radius = 7,
-    border_width = 1,
-    hover_border_width = 0.5,
-    hover_border = '#656565',
-    shadow_blur = 6,
-    row_height = 26,
-    separator_height = 8,
-    padding_x = 14,
-    padding_y = 4,
-    shortcut_gap = 8,
-    shortcut_right_gap = 0,
-    playlist_shortcut_right_gap = 6,
-    arrow_width = 18,
-    arrow_font_size = 24,
+    bg_alpha = 0,
+    shadow_alpha = 90,
+    radius = 13,
+    border_width = 2,
+    hover_border_width = 0,
+    hover_border = '#00000000',
+    shadow_blur = 7,
+    row_height = 47,
+    separator_height = 13,
+    padding_x = 12,
+    padding_y = 13,
+    shortcut_gap = 7,
+    shortcut_right_gap = 4,
+    playlist_shortcut_right_gap = 4,
+    arrow_width = 32,
+    arrow_font_size = 43,
     arrow_char = '›',
-    submenu_gap = 4,
-    screen_margin = 6,
-    min_width = 220,
-    max_width = 640,
+    submenu_gap = 7,
+    screen_margin = 11,
+    min_width = 378,
+    max_width = 1080,
     max_visible_rows = 0,
     scroll_threshold = 0.80,
-    scrollbar_width = 6,
-    scrollbar_gap = 4,
-    scrollbar_min_thumb = 24,
+    scrollbar_width = 9,
+    scrollbar_gap = 0,
+    scrollbar_min_thumb = 36,
     scrollbar_right_gap = 2,
-    scrollbar_track = '#555555',
-    scrollbar_thumb = '#222222',
-    scrollbar_track_alpha = 150,
-    scrollbar_thumb_alpha = 115,
-    scroll_step = 1,
+    scrollbar_track = '#48484A',
+    scrollbar_thumb = '#8E8E93',
+    scrollbar_track_alpha = 70,
+    scrollbar_thumb_alpha = 145,
+    scroll_step = 2,
     click_to_show_submenus = false,
     hide_root_separators = true,
     child_indent_chars = 1,
     root_indent_chars = 1,
-    playlist_header_indent_chars = 1,
+    playlist_header_indent_chars = 2,
     modal_mask = true,
     modal_mask_alpha = 255,
     modal_z = 1000000,
-    ui_scale = 'auto',
+    ui_scale = false,
     design_width = 1920,
     design_height = 1080,
     min_ui_scale = 0.8,
-    max_ui_scale = 2.5,
-    macos_font_scale = 1.0,
+    max_ui_scale = 1.6,
+    macos_font_scale = 1.4,
 }
 
 -- 对外共享的配置表：始终保持同一个 table 引用，
@@ -251,30 +251,35 @@ local function get_screen_size()
 end
 
 local function ui_scale(ow, oh)
+    local s
+
     if o.ui_scale ~= 'auto' then
         local n = tonumber(o.ui_scale)
-        if n and n > 0 then return n end
-        return 1
+        s = (n and n > 0) and n or 1
+    else
+        -- Prefer physical screen resolution. If unavailable, keep the old OSD-size method.
+        local sw,sh = get_screen_size()
+        if not sw or not sh then
+            sw,sh = ow,oh
+        end
+
+        if not sw or not sh or sw <= 0 or sh <= 0 then
+            s = 1
+        else
+            local dw = tonumber(o.design_width) or 1920
+            local dh = tonumber(o.design_height) or 1080
+            local sx = sw / dw
+            local sy = sh / dh
+            s = math.min(sx, sy)
+            s = clamp(s, tonumber(o.min_ui_scale) or 0.8, tonumber(o.max_ui_scale) or 2.5)
+        end
     end
 
-    -- Prefer physical screen resolution. If unavailable, keep the old OSD-size method.
-    local sw,sh = get_screen_size()
-    if not sw or not sh then
-        sw,sh = ow,oh
-    end
-
-    if not sw or not sh or sw <= 0 or sh <= 0 then return 1 end
-
-    local dw = tonumber(o.design_width) or 1920
-    local dh = tonumber(o.design_height) or 1080
-    local sx = sw / dw
-    local sy = sh / dh
-    local s = math.min(sx, sy)
-    s = clamp(s, tonumber(o.min_ui_scale) or 0.8, tonumber(o.max_ui_scale) or 2.5)
-
+    -- Apply the macOS font scale for both automatic and explicitly configured UI scales.
     if platform == 'darwin' then
         s = s * (tonumber(o.macos_font_scale) or 1.0)
     end
+
     return s
 end
 

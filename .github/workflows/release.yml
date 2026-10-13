@@ -66,14 +66,14 @@ jobs:
           # 生成 Release 描述
           cat > release_body.txt <<EOF
 
-          ## 配置文档（Configuration）
+          ### 配置文档（Configuration）
 
           - [文档：Documentation](https://github.com/akFace/mpv-menu-plugin-next/blob/main/doc/README.md)
           - [示例 input.conf example](https://github.com/akFace/mpv-menu-plugin-next/tree/main/example)
           - [已使用本插件的 mpv 配置-example for mpv config](https://github.com/akFace/mpv.config)
           ---
 
-          ## Update log:
+          ### Update log:
 
           EOF
 

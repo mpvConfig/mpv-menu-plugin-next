@@ -87,8 +87,23 @@ function get(name, default)
 end
 
 local function magic_get(name)
-    -- Lua identifiers can't contain "-", so in order to match with mpv
-    -- property conventions, replace "_" to "-"
+    -- Special case: ud_xxx_yyy -> user-data/xxx-yyy
+    -- The first underscore after "ud_" becomes a slash, the rest become hyphens.
+    if name:match('^ud_') then
+        local rest = name:sub(4)
+        local first_us = rest:find('_')
+        if first_us then
+            local a = rest:sub(1, first_us - 1)
+            local b = rest:sub(first_us + 1)
+            local path = 'user-data/' .. a .. '-' .. b:gsub('_', '-')
+            return get(path, nil)
+        else
+            local path = 'user-data/' .. rest
+            return get(path, nil)
+        end
+    end
+
+    -- Default: replace _ with -
     name = string.gsub(name, "_", "-")
     return get(name, nil)
 end
