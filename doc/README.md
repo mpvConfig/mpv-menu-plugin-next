@@ -18,7 +18,7 @@ Ctrl+4  add brightness  1     #menu: 视频 > 调色 > 亮度 +1
 - `add contrast -1`：真正执行的 mpv 命令。
 - `视频 > 调色 > 对比度 -1`：菜单层级和显示文字。
 - `-`：表示分隔线。
-- [完整示例：Full example](https://github.com/akFace/mpv-menu-plugin-next/tree/main/example)
+- [完整示例：Full example](https://github.com/mpvConfig/mpv-menu-plugin-next/tree/main/example)
 
 再例如：
 
@@ -133,60 +133,67 @@ portable_config/script-opts/menu_style.conf
 
 ### 完整配置表
 
+- 在 `menu_style.conf` 文件中的 Boolean 值需要写成 yes/no 即：以下表格的值(true ⇢ yes | false ⇢ no)
+
 | 参数                           |    当前值 | 功能                                                |
 | ------------------------------ | --------: | --------------------------------------------------- |
-| `font_name`                    |        '' | 指定字体名称                                        |
+| `font`                         |        '' | 字体（留空则按平台自动选择）                        |
+| `font_name`                    |        '' | 指定字体名称（非空时覆盖 `font`）                   |
 | `font_size`                    |        29 | 菜单字号                                            |
 | `bold`                         |     false | 是否粗体                                            |
 | `italic`                       |     false | 是否斜体                                            |
-| `row_height`                   |        47 | 普通菜单行高                                        |
+| `menu_item_height`             |        47 | 普通菜单行高（`auto` 时按 OSD 高度相对 1080p 缩放） |
+| `menu_item_height_fullscreen`  |        50 | 全屏菜单行高（`auto` 时按 OSD 高度相对 1080p 缩放） |
+| `menu_font_scale`              |         1 | 菜单文字缩放倍数                                    |
 | `separator_height`             |        13 | 分隔线高度                                          |
 | `padding_x`                    |        12 | 菜单内容左右内边距                                  |
 | `padding_y`                    |        13 | 菜单上下内边距                                      |
 | `root_indent_chars`            |         1 | 一级菜单文字缩进                                    |
 | `child_indent_chars`           |         1 | 子菜单文字缩进                                      |
+| `playlist_header_indent_chars` |         2 | 播放列表顶部计数缩进                                |
 | `background`                   |   #2C2C2E | 菜单背景色                                          |
+| `bg_alpha`                     |         0 | 菜单背景透明度                                      |
 | `radius`                       |        13 | 菜单圆角                                            |
 | `border`                       |   #5A5A5F | 菜单外框色                                          |
 | `border_width`                 |         2 | 外框宽度                                            |
 | `text`                         |   #F2F2F7 | 普通文字颜色                                        |
 | `disabled_text`                |   #8E8E93 | 禁用文字颜色                                        |
-| `hover_bg`                     |   #505050 | Hover 背景色                                        |
-| `hover_text`                   |   #FFFFFF | Hover 文字色                                        |
+| `hover`                        |   #505050 | Hover 背景色                                        |
+| `hover_bg`                     |   #505050 | Hover 背景色（非空时覆盖 `hover`）                  |
+| `hover_text`                   |   #FFFFFF | Hover 文字色（空则回退到 `text`）                   |
 | `hover_border`                 | #00000000 | Hover 边框颜色                                      |
 | `hover_border_width`           |         0 | Hover 边框宽度                                      |
 | `hover_corner_radius`          |         0 | Hover 圆角                                          |
 | `hover_margin_x`               |         2 | Hover 背景左右留白                                  |
 | `hover_margin_y`               |         0 | Hover 背景上下留白                                  |
 | `shortcut`                     |   #D1D1D6 | 普通快捷键颜色                                      |
-| `hover_shortcut`               |   #FFFFFF | Hover 快捷键颜色                                    |
+| `hover_shortcut`               |   #FFFFFF | Hover 快捷键颜色（空则回退到 `shortcut`）           |
 | `shortcut_gap`                 |         7 | 标题和快捷键布局间距                                |
 | `shortcut_right_gap`           |         4 | 快捷键右侧对齐基准                                  |
 | `playlist_shortcut_right_gap`  |         4 | 播放列表右侧格式后缀额外距离                        |
-| `arrow`                        |   #E5E5EA | 子菜单箭头颜色                                      |
+| `arrow`                        |   #E5E5EA | 子菜单箭头颜色（非空时覆盖 `submenu_arrow`）        |
+| `submenu_arrow`                |   #E5E5EA | 子菜单箭头颜色                                      |
 | `arrow_char`                   |       '›' | 子菜单箭头字符号（比如： »,→, ->）                  |
 | `arrow_alpha`                  |         0 | 普通箭头透明度                                      |
-| `hover_arrow`                  |   #FFFFFF | Hover 箭头颜色                                      |
+| `hover_arrow`                  |   #FFFFFF | Hover 箭头颜色（空则回退到 `submenu_arrow`）        |
 | `hover_arrow_alpha`            |         0 | Hover 箭头透明度                                    |
 | `arrow_width`                  |        32 | 箭头区域宽度                                        |
 | `arrow_font_size`              |        43 | 箭头字号                                            |
 | `separator`                    |   #636366 | 分隔线颜色                                          |
 | `check`                        |   #F2F2F7 | 勾选颜色                                            |
 | `shadow`                       |   #000000 | 阴影颜色                                            |
-| `bg_alpha`                     |         0 | 菜单背景透明度                                      |
 | `shadow_alpha`                 |        90 | 阴影透明度                                          |
 | `shadow_blur`                  |         7 | 阴影模糊                                            |
 | `submenu_gap`                  |         7 | 子菜单间距                                          |
 | `screen_margin`                |        11 | 菜单距离 OSD 边缘的最小距离                         |
-| `min_width`                    |       378 | 菜单最小宽度                                        |
+| `min_width`                    |       350 | 菜单最小宽度                                        |
 | `max_width`                    |      1080 | 菜单最大宽度                                        |
 | `max_visible_rows`             |         0 | 最大可见行数配置项                                  |
 | `click_to_show_submenus`       |     false | 是否要求点击才展开子菜单                            |
 | `hide_root_separators`         |      true | 是否隐藏一级菜单内部的分隔线                        |
-| `playlist_header_indent_chars` |         2 | 播放列表顶部计数缩进                                |
 | `modal_mask`                   |      true | 是否启用全屏模态遮罩                                |
 | `modal_mask_alpha`             |       255 | 模态遮罩透明度                                      |
-| `modal_z`                      |   1800000 | 模态遮罩层级                                        |
+| `modal_z`                      |   1000000 | 模态遮罩层级                                        |
 | `scroll_threshold`             |      0.80 | 超过窗口高度多少比例后进入滚动                      |
 | `scrollbar_width`              |         9 | 滚动条宽度                                          |
 | `scrollbar_gap`                |         0 | 滚动条与内容区域间距                                |
@@ -197,13 +204,18 @@ portable_config/script-opts/menu_style.conf
 | `scrollbar_track_alpha`        |        70 | 滚动轨道透明度                                      |
 | `scrollbar_thumb_alpha`        |       145 | 滚动滑块透明度                                      |
 | `scroll_step`                  |         2 | 单次滚动步长                                        |
-| **自适应屏幕分辨率配置**       |           |                                                     |
-| `ui_scale`                     |     false | 当值为`auto`时 UI 缩放根据当前 OSD 分辨率自动计算。 |
-| `design_width`                 |      1920 | 设计基准分辨率                                      |
-| `design_height`                |      1080 | 设计基准分辨率                                      |
-| `min_ui_scale`                 |       0.8 | 最小缩放范围                                        |
-| `max_ui_scale`                 |       1.6 | 最大缩放范围                                        |
-| `macos_font_scale`             |       1.4 | macos 字体视觉补偿                                  |
+| `macos_font_scale`             |       1.4 | macOS 字体视觉补偿                                  |
+| **Liquid Glass**               |           |                                                     |
+| `glass_enabled`                |     false | 总开关；关闭后回退到原始菜单样式                    |
+| `glass_color`                  |   #17181C | 玻璃底色                                            |
+| `glass_opacity`                |        38 | 着色强度：0=清透，100=实色                          |
+| `glass_border_opacity`         |         8 | 边缘亮度/不透明度：0=不显示，100=完全显示           |
+| `glass_shadow`                 |      true | 软阴影                                              |
+| `glass_blur`                   |      true | GLSL 真模糊（需 vo=gpu-next）                       |
+| `glass_refraction`             |      true | 边缘折射                                            |
+| `glass_increase_contrast`      |     false | 无障碍：黑玻璃 + 可见描边                           |
+| `glass_reduce_transparency`    |     false | 无障碍：磨砂近不透明                                |
+| `reduce_motion`                |     false | 关闭弹簧/缩放动画（当前菜单本身不使用此类动画）     |
 
 - `script-opts/dyn_menu.conf` 当前包含 `max_playlist_items`：设置为 `0` 表示不截断播放列表，完整生成并交给菜单滚动容器处理。
 

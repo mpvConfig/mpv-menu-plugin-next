@@ -15,7 +15,7 @@
 - 支持动态菜单：轨道、章节、版本、播放列表、配置文件、音频设备等。
 - 支持长标题自动省略号 `…`，并为快捷键、子菜单箭头预留空间。
 - Windows / macOS / Linux 均提供文件、文件夹、保存对话框路径。
-- 🎯 [预览 / Preview](https://github.com/akFace/mpv-menu-plugin-next#%E9%A2%84%E8%A7%88preview)
+- 🎯 [预览 / Preview](https://github.com/mpvConfig/mpv-menu-plugin-next#%E9%A2%84%E8%A7%88preview)
 
 ## 2. 安装（Installation）
 
@@ -48,33 +48,41 @@ portable_config/
 
 ## 配置文档（Configuration）
 
-- [文档：Documentation](https://github.com/akFace/mpv-menu-plugin-next/blob/main/doc/README.md)
-- [示例 input.conf example](https://github.com/akFace/mpv-menu-plugin-next/tree/main/example)
+- [文档：Documentation](https://github.com/mpvConfig/mpv-menu-plugin-next/blob/main/doc/README.md)
+- [示例 input.conf example](https://github.com/mpvConfig/mpv-menu-plugin-next/tree/main/example)
 - [已使用本插件的 mpv 配置-example for mpv config](https://github.com/akFace/mpv.config)
 
 ## 预览（preview）
 
-#### 默认风格（Default style）
+### 默认风格 Default style
 
-🎨 [menu_style.conf](https://github.com/akFace/mpv-menu-plugin-next/tree/main/src/script-opts/menu_style.conf)
+🎨 [menu_style.conf](https://github.com/mpvConfig/mpv-menu-plugin-next/tree/main/src/script-opts/menu_style.conf)
 
-![image](https://github.com/akFace/mpv-menu-plugin-next/raw/main/doc/images/Snipaste_2026-08-14_21-31-47.jpg)
+![image](./doc/images/Snipaste_2026-08-14_21-31-47.jpg)
 🍵 [中文菜单预览图](https://github.com/akFace/mpv.config#%E5%8A%9F%E8%83%BD%E5%BC%BA%E5%A4%A7%E7%9A%84%E5%8F%B3%E9%94%AE%E8%8F%9C%E5%8D%95)
 
 ---
 
-#### macos 白色风格（macos-white-style）
+### 磨砂玻璃 menu_style-gray-glass
 
-🎨 [menu_style-macos-white.conf](https://github.com/akFace/mpv-menu-plugin-next/tree/main/example/script-opts/menu_style-macos-white.conf)
+🎨 [menu_style-gray-glass.conf](https://github.com/mpvConfig/mpv-menu-plugin-next/tree/main/example/script-opts/menu_style-gray-glass.conf)
 
-## ![image](https://github.com/akFace/mpv-menu-plugin-next/raw/main/doc/images/Snipaste_2026-08-16_01-04-38.jpg)
+![image](./doc/images/Snipaste_2026-10-10_15-08-58.jpg)
 
 ---
 
-#### macos 深色风格（macos-dark-style）
+### macos 白色风格 macos-white-style
 
-🎨 [menu_style-macos-dark.conf](https://github.com/akFace/mpv-menu-plugin-next/tree/main/example/script-opts/menu_style-macos-dark.conf)
+🎨 [menu_style-macos-white.conf](https://github.com/mpvConfig/mpv-menu-plugin-next/tree/main/example/script-opts/menu_style-macos-white.conf)
 
-![image](https://github.com/akFace/mpv-menu-plugin-next/raw/main/doc/images/Snipaste_2026-08-16_01-10-14.jpg)
+![image](./doc/images/Snipaste_2026-08-16_01-04-38.jpg)
+
+---
+
+### macos 深色风格 macos-dark-style
+
+🎨 [menu_style-macos-dark.conf](https://github.com/mpvConfig/mpv-menu-plugin-next/tree/main/example/script-opts/menu_style-macos-dark.conf)
+
+![image](./doc/images/Snipaste_2026-08-16_01-10-14.jpg)
 
 > 如果你有好看的风格配置文件`menu_style.conf`，也可以在 issue 中分享（If you have an attractive style `menu_style.conf`, you can also share it in the issue.）
