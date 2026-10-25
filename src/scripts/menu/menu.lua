@@ -1219,19 +1219,26 @@ local function draw_menu(list,x,y,level,ow,oh,w,h,layout,scale,meta)
     return table.concat(out,'\n')
 end
 
+-- 更新 overlay 数据，但只有内容或画布尺寸真的变化时才提交。
+-- 这能跳过重复 render() 生成相同 ASS 内容后的无效 overlay:update()。
+local function set_overlay_data(data, ow, oh)
+    local changed = overlay.data ~= data or overlay.res_x ~= ow or overlay.res_y ~= oh
+    overlay.res_x = ow
+    overlay.res_y = oh
+    overlay.data = data
+    return changed
+end
+
 local function clear()
     local ow,oh=get_osd()
     if ow and oh then
-        overlay.res_x=ow
-        overlay.res_y=oh
         current_ow,current_oh=ow,oh
     else
-        overlay.res_x=REF_W
-        overlay.res_y=REF_H
+        ow,oh=REF_W,REF_H
     end
-    overlay.data=''
+    local changed = set_overlay_data('', ow, oh)
     if menu_glass.path then menu_glass_update() end
-    overlay:update()
+    if changed then overlay:update() end
 end
 
 local render
@@ -1358,12 +1365,11 @@ render = function()
         end
     end
 
-    overlay.res_x=ow
-    overlay.res_y=oh
-    overlay.data=table.concat(ass,'\n')
+    local data = table.concat(ass,'\n')
+    local overlay_changed = set_overlay_data(data, ow, oh)
     menu_glass_install()
     menu_glass_update()
-    overlay:update()
+    if overlay_changed then overlay:update() end
 end
 
 local saved_modernz_visibility = nil
@@ -1566,16 +1572,17 @@ local function on_mouse_move()
         open_path[l]=nil
     end
 
+    local rendered = false
     if it.type=='submenu' and not state_has(it,'disabled') then
         open_path[l]=i
-        if changed then schedule_hover_open(l,i) end
+        if changed then rendered = schedule_hover_open(l,i) end
     else
         clear_deeper_path(l-1)
         open_path[l]=nil
         cancel_hover_timer()
     end
 
-    if changed then render() end
+    if changed and not rendered then render() end
 end
 
 local function refresh_menu_snapshot()
@@ -1591,22 +1598,22 @@ local function refresh_menu_snapshot()
 end
 
 local function open_hover_now(l, i)
-    if not visible or not l or not i then return end
+    if not visible or not l or not i then return false end
     local list=menu_at(l)
     local it=list and list[i]
     if not it or it.type~='submenu' or state_has(it,'disabled') then
         clear_deeper_path(l-1)
         open_path[l]=nil
         render()
-        return
+        return true
     end
-    if o.click_to_show_submenus then return end
+    if o.click_to_show_submenus then return false end
 
     if it._playlist_total or it._playlist_current_menu_index then
         refresh_menu_snapshot()
         list=menu_at(l)
         it=list and list[i]
-        if not it or it.type~='submenu' then return end
+        if not it or it.type~='submenu' then return false end
     end
 
     open_path[l]=i
@@ -1618,14 +1625,15 @@ local function open_hover_now(l, i)
         prepare_playlist_scroll_for_open(selected_level, it)
     end
     render()
+    return true
 end
 
 schedule_hover_open = function(l, i)
-    if o.click_to_show_submenus or not l or not i then return end
+    if o.click_to_show_submenus or not l or not i then return false end
     local list=menu_at(l)
     local it=list and list[i]
-    if not it or it.type~='submenu' or state_has(it,'disabled') then return end
-    open_hover_now(l, i)
+    if not it or it.type~='submenu' or state_has(it,'disabled') then return false end
+    return open_hover_now(l, i)
 end
 
 local function show(attempt)
@@ -2380,7 +2388,7 @@ end)
 
 mp.register_event('end-file',hide)
 mp.register_event('shutdown',hide)
-mp.add_periodic_timer(0.08,function() if visible then on_mouse_move() end end)
+mp.add_periodic_timer(0.04,function() if visible then on_mouse_move() end end)
 
 msg.info('cross-platform menu backend v51 loaded as '..BACKEND_NAME)
 
