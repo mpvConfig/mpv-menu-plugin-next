@@ -147,12 +147,14 @@ portable_config/script-opts/menu_style.conf
 | `scale_fullscreen`             |       1.2 | 全屏状态/最大化缩放倍率                                                             |
 | `menu_font_scale`              |         1 | 设置字体大小-菜单文字缩放倍数，作用在 `font_size_ratio` 之上                        |
 | `macos_font_scale`             |         1 | macOS 字体视觉补偿-用于设置 macOS 缩放大小                                          |
+| `separator_width`              |         1 | 分隔线宽度                                                                          |
 | `separator_height`             |        13 | 分隔线高度                                                                          |
 | `padding_x`                    |        12 | 菜单内容左右内边距                                                                  |
 | `padding_y`                    |        10 | 菜单上下内边距                                                                      |
 | `root_indent_chars`            |         1 | 一级菜单文字缩进                                                                    |
 | `child_indent_chars`           |         1 | 子菜单文字缩进                                                                      |
 | `playlist_header_indent_chars` |         1 | 播放列表顶部计数缩进                                                                |
+| `sorting_loading_threshold`    |       140 | 播放列表超过此条数排序时才显示 loading                                              |
 | `background`                   |   #2C2C2E | 菜单背景色                                                                          |
 | `bg_alpha`                     |         0 | 菜单背景透明度                                                                      |
 | `radius`                       |        10 | 菜单圆角                                                                            |

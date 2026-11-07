@@ -58,7 +58,8 @@ local o_defaults = {
     scale_fullscreen = 1.2,
     menu_font_scale = 1,
 
-    separator_height = 13,
+    separator_width = 1,
+    separator_height = 7,
     padding_x = 12,
     padding_y = 10,
     shortcut_gap = 7,
@@ -73,6 +74,7 @@ local o_defaults = {
     max_width = 1000,
     max_visible_rows = 0,
     scroll_threshold = 0.80,
+    sorting_loading_threshold = 140, -- 播放列表超过此条数才显示排序 loading
     scrollbar_width = 9,
     scrollbar_gap = 0,
     scrollbar_min_thumb = 36,
@@ -186,7 +188,22 @@ local items = {}
 local items_dirty = true
 local open_path = {}
 local rects = {}
+-- 缓存菜单静态测量结果；鼠标悬停时无需反复扫描整份长播放列表。
+local measure_cache = setmetatable({}, { __mode = 'k' })
+local function clear_measure_cache()
+    measure_cache = setmetatable({}, { __mode = 'k' })
+end
 local hover_level, hover_index = nil, nil
+local hover_sort_level = nil
+-- 播放列表排序状态：分批执行以便 loading 动画和菜单重绘有机会运行。
+local sorting_playlist = false
+local sorting_playlist_level = nil
+local sorting_show_loading = false
+local sorting_spinner_frame = 1
+local sorting_spinner_glyphs = {
+    '⠋', '⠙', '⠹', '⠸', '⠼',
+    '⠴', '⠦', '⠧', '⠇', '⠏'
+}
 local selected_level, selected_index = 1, nil
 local anchor_x, anchor_y = nil, nil
 local key_bindings = {}
@@ -968,22 +985,61 @@ local function measure(list, ow, oh, level)
     local max_w = o.max_width * scale
     local max_screen_w = math.max(min_w, ow - 2*(o.screen_margin*scale))
     local sr_gap = math.max(0, tonumber(o.shortcut_right_gap) or 0) * scale
+    local playlist_header = get_playlist_header(list, level)
 
-    local content_w = min_w
-    for _,it in ipairs(list or {}) do
-        if not is_hidden(it) and it.type ~= 'separator' then
-            local title, shortcut = split_title(it.title)
-            local w = text_width(title) + px*2 + child_indent
-            if state_has(it,'checked') then w = w + 20*scale end
-            if shortcut ~= '' then w = w + gap + text_width(shortcut) + sr_gap end
-            if it.type == 'submenu' then w = w + arrow end
-            content_w = math.max(content_w, w)
+    -- 这些参数决定列表宽度和行布局；列表内容变化时由快照更新逻辑清空缓存。
+    local cache_key = table.concat({
+        tostring(level), tostring(ow), tostring(oh), tostring(scale),
+        tostring(fs), tostring(current_row_height()), tostring(px), tostring(o.padding_y),
+        tostring(o.separator_height), tostring(o.hide_root_separators),
+        tostring(o.child_indent_chars), tostring(o.root_indent_chars),
+        tostring(gap), tostring(arrow), tostring(min_w), tostring(max_w),
+        tostring(sr_gap), tostring(o.playlist_shortcut_right_gap),
+        tostring(playlist_header or '')
+    }, '\31')
+
+    local cached = measure_cache[list]
+    local base
+    if cached and cached.key == cache_key then
+        base = cached
+    else
+        local content_w = min_w
+        for _,it in ipairs(list or {}) do
+            if not is_hidden(it) and it.type ~= 'separator' then
+                local title, shortcut = split_title(it.title)
+                local w = text_width(title) + px*2 + child_indent
+                if state_has(it,'checked') then w = w + 20*scale end
+                if shortcut ~= '' then w = w + gap + text_width(shortcut) + sr_gap end
+                if it.type == 'submenu' then w = w + arrow end
+                content_w = math.max(content_w, w)
+            end
         end
+
+        local layout, desired_h, built_row_h, top_pad, bottom_pad, header_h = build_layout(list, scale, level)
+        if playlist_header then
+            content_w = math.max(content_w, text_width(playlist_header) + px * 2 + fs * 2.2)
+        end
+
+        base = {
+            key = cache_key,
+            content_w = content_w,
+            layout = layout,
+            desired_h = desired_h,
+            row_h = built_row_h,
+            top_pad = top_pad,
+            bottom_pad = bottom_pad,
+            header_h = header_h,
+        }
+        measure_cache[list] = base
     end
 
-    local layout, desired_h, row_h, top_pad, bottom_pad, header_h = build_layout(list, scale, level)
-    local playlist_header = get_playlist_header(list, level)
-    if playlist_header then content_w = math.max(content_w, text_width(playlist_header) + px * 2) end
+    local content_w = base.content_w
+    local layout = base.layout
+    local desired_h = base.desired_h
+    local built_row_h = base.row_h
+    local top_pad = base.top_pad
+    local bottom_pad = base.bottom_pad
+    local header_h = base.header_h
 
     local max_h = panel_max_height(oh, scale)
     local scrollable = desired_h > max_h + 0.01
@@ -1005,7 +1061,7 @@ local function measure(list, ow, oh, level)
 
     local meta = {
         scrollable = scrollable, scroll_offset = scroll_offset, max_scroll = max_scroll,
-        row_h = row_h, top_pad = top_pad, bottom_pad = bottom_pad, header_h = header_h,
+        row_h = built_row_h, top_pad = top_pad, bottom_pad = bottom_pad, header_h = header_h,
         content_h = math.max(1, h - top_pad - bottom_pad - header_h), desired_h = desired_h,
         scrollbar_width = o.scrollbar_width * scale, scrollbar_gap = o.scrollbar_gap * scale,
         scrollbar_right_gap = o.scrollbar_right_gap * scale,
@@ -1042,15 +1098,29 @@ local function hit_test(x,y)
         local r = rects[level]
         if r and x>=r.x and x<=r.x+r.w and y>=r.y and y<=r.y+r.h then
             local ly = y-r.y
+            local sort = r.playlist_sort
+            if sort and x >= sort.x and x <= sort.x + sort.w and y >= sort.y and y <= sort.y + sort.h then
+                return level, nil, 'playlist-sort'
+            end
             if r.scrollable then
                 local sbw = r.scrollbar_width or 0
                 local sbg = r.scrollbar_gap or 0
                 local sb_left = r.x + r.w - r.padding_x - sbg - sbw
                 if x >= sb_left - sbg and x <= r.x + r.w then return level,nil end
             end
-            for _,g in ipairs(r.layout) do
-                local gy = r.top_pad + g.y - r.top_pad - (r.scroll_offset or 0)
-                if ly >= gy and ly < gy + g.h then
+            -- layout 按 y 顺序排列；用二分查找定位鼠标所在行，
+            -- 避免每次鼠标移动都从头扫描整个播放列表。
+            local layout = r.layout or {}
+            local content_y = ly + (r.scroll_offset or 0)
+            local lo, hi = 1, #layout
+            while lo <= hi do
+                local mid = math.floor((lo + hi) / 2)
+                local g = layout[mid]
+                if content_y < g.y then
+                    hi = mid - 1
+                elseif content_y >= g.y + g.h then
+                    lo = mid + 1
+                else
                     if r.items[g.index].type == 'separator' then return level,nil end
                     return level,g.index
                 end
@@ -1114,6 +1184,12 @@ local function draw_menu(list,x,y,level,ow,oh,w,h,layout,scale,meta)
         row_h=meta.row_h,top_pad=meta.top_pad,bottom_pad=meta.bottom_pad,header_h=meta.header_h or 0,content_h=meta.content_h,
         scrollbar_width=meta.scrollbar_width,scrollbar_gap=meta.scrollbar_gap,padding_x=o.padding_x*scale,
     }
+    if meta.header_h and meta.header_h > 0 and get_playlist_header(list, level) then
+        local button_size = math.max(current_font_size() * 2.0, meta.row_h * 0.72)
+        local bx = x + w - o.padding_x * scale - button_size
+        local by = y + meta.top_pad + (meta.header_h - button_size) / 2
+        rects[level].playlist_sort = { x = bx, y = by, w = button_size, h = button_size }
+    end
     local out={}
     local radius=o.radius*scale
 
@@ -1127,7 +1203,8 @@ local function draw_menu(list,x,y,level,ow,oh,w,h,layout,scale,meta)
         and current_vo == 'gpu-next'
         and video_track_present
     if glass_rim_active then
-        out[#out+1] = draw_line(x+radius*0.72,y+0.8*scale,x+w-radius*0.72,y+0.8*scale, '#FFFFFF', ui.glass_highlight_alpha, math.max(0.7,0.8*scale))
+        local sep_w = math.max(0.5, (tonumber(o.separator_width) or 1) * scale)
+        out[#out+1] = draw_line(x+radius*0.72,y+0.8*scale,x+w-radius*0.72,y+0.8*scale, '#FFFFFF', ui.glass_highlight_alpha, sep_w)
     end
 
     local content_top = y + meta.top_pad + (meta.header_h or 0)
@@ -1141,17 +1218,67 @@ local function draw_menu(list,x,y,level,ow,oh,w,h,layout,scale,meta)
         local header_y = y + meta.top_pad + meta.header_h / 2
         local header_indent = o.playlist_header_indent_chars * fs
         local header_x = x + o.padding_x*scale + header_indent
-        out[#out+1] = text_tag(header_x, header_y, playlist_header, o.text, fs, '4')
+        local sort_rect = rects[level].playlist_sort
+        local spinner_x = sort_rect and (sort_rect.x - 10 * scale) or nil
+        local header_right = sort_rect and (spinner_x - 8 * scale) or (x + w - o.padding_x * scale)
+        local header_text = truncate_text(playlist_header, math.max(1, header_right - header_x))
+        out[#out+1] = text_tag(header_x, header_y, header_text, o.text, fs, '4')
+        if sort_rect then
+            if sorting_show_loading and sorting_playlist_level == level then
+                local spinner = sorting_spinner_glyphs[sorting_spinner_frame] or sorting_spinner_glyphs[1]
+                -- Loading 与播放列表标题使用相同字体大小和常规文字颜色。
+                out[#out+1] = text_tag(spinner_x, header_y, spinner, o.text, fs, '5')
+            end
+            local sort_hover = hover_sort_level == level and not sorting_playlist
+            if sort_hover then
+                -- 排序按钮 hover 背景保持正方形，居中显示。
+                local hm_x = math.max(0, tonumber(o.hover_margin_x or 1) * scale)
+                local hm_y = math.max(0, tonumber(o.hover_margin_y or 0) * scale)
+                local hover_size = math.min(sort_rect.h * 0.80, sort_rect.w * 0.80)
+                local hover_x = sort_rect.x + (sort_rect.w - hover_size) / 2
+                local hover_y = sort_rect.y + (sort_rect.h - hover_size) / 2
+                -- 固定小圆角 4px。
+                local hover_radius = 4 * scale
+                out[#out+1] = draw_path(round_rect(
+                    hover_x, hover_y, hover_size, hover_size, hover_radius
+                ),
+                    ui.hover, ui.hover_alpha, (tonumber(ui.hover_border_width) or 0) * scale,
+                    0, ui.hover_border)
+            end
+            local sort_fs = fs * 1.15
+            out[#out+1] = text_tag(sort_rect.x + sort_rect.w / 2, header_y, '⇵',
+                sort_hover and o.hover_text or o.text, sort_fs, '5')
+        end
         local line_y = y + meta.top_pad + meta.header_h - 0.5*scale
         local line_right = x + w - o.padding_x*scale
-        out[#out+1] = draw_line(header_x, line_y, line_right, line_y, o.separator, 110, math.max(1,scale))
+        local sep_w = math.max(0.5, (tonumber(o.separator_width) or 1) * scale)
+        out[#out+1] = draw_line(header_x, line_y, line_right, line_y, o.separator, 110, sep_w)
     end
 
-    for _,g in ipairs(layout) do
+    -- 通过二分查找找到第一个与可视区域相交的行，
+    -- 绘制时只遍历屏幕内的行，不再扫描整个长列表。
+    local visible_top = content_top - y + scroll_offset
+    local visible_bottom = content_bottom - y + scroll_offset
+    local first_visible = 1
+    local lo, hi = 1, #layout
+    while lo <= hi do
+        local mid = math.floor((lo + hi) / 2)
+        local g = layout[mid]
+        if g.y + g.h < visible_top then
+            lo = mid + 1
+        else
+            first_visible = mid
+            hi = mid - 1
+        end
+    end
+
+    for layout_pos = first_visible, #layout do
+        local g = layout[layout_pos]
         local idx = g.index
         local it = list[idx]
         local ry = y + g.y - scroll_offset
-        if ry + g.h >= content_top and ry <= content_bottom then
+        if ry > content_bottom then break end
+        if ry + g.h >= content_top then
             local row_out = {}
             local clip_tag = string.format('{\\clip(%.2f,%.2f,%.2f,%.2f)}', x, content_top, x+w, content_bottom)
             if it.type == 'separator' then
@@ -1159,7 +1286,8 @@ local function draw_menu(list,x,y,level,ow,oh,w,h,layout,scale,meta)
                 local indent = (level > 1) and (o.child_indent_chars * fs) or 0
                 local sep_left = x + o.padding_x * scale + indent
                 local sep_right = x + w - 1 * scale
-                row_out[#row_out+1]=draw_line(sep_left,sy,sep_right,sy,o.separator,110,math.max(1,scale))
+                local sep_w = math.max(0.5, (tonumber(o.separator_width) or 1) * scale)
+                row_out[#row_out+1]=draw_line(sep_left,sy,sep_right,sy,o.separator,110,sep_w)
             else
                 local path_selected = (open_path[level] == idx)
                 local path_hovered = (hover_level == level and hover_index == idx)
@@ -1351,6 +1479,7 @@ render = function()
         hover_level,hover_index=l,i
     elseif not l then
         hover_level,hover_index=nil,nil
+    hover_sort_level=nil
     end
 
     rects={}
@@ -1486,6 +1615,7 @@ local function hide()
     rects={}
     anchor_x,anchor_y=nil,nil
     hover_level,hover_index=nil,nil
+    hover_sort_level=nil
     selected_level,selected_index=1,nil
     last_osd_w,last_osd_h=0,0
     remove_bindings()
@@ -1518,6 +1648,78 @@ local function activate_selected()
         msg.error('menu command failed: ' .. tostring(err))
         mp.osd_message('菜单命令执行失败: ' .. tostring(err), 2)
     end
+end
+
+-- 前置声明：排序完成后需要刷新快照并重算当前打开的播放列表滚动位置。
+local refresh_menu_snapshot
+local recompute_open_playlist_scrolls
+
+local function toggle_playlist_order(level)
+    -- 排序期间禁止再次触发，避免多个排序任务交错执行。
+    if sorting_playlist then return false end
+
+    local playlist = mp.get_property_native('playlist')
+    if type(playlist) ~= 'table' then
+        msg.warn('playlist order: playlist is unavailable')
+        return false
+    end
+
+    local n = #playlist
+    if n < 2 then return false end
+
+    sorting_playlist = true
+    sorting_playlist_level = level
+    local loading_threshold = math.max(0, math.floor(tonumber(o.sorting_loading_threshold) or 200))
+    sorting_show_loading = n > loading_threshold
+    sorting_spinner_frame = 1
+    hover_sort_level = nil
+    render()
+
+    local dst = 0
+    -- 将排序拆成每批 20 次移动，批次之间让出事件循环，让 loading 有机会刷新动画
+    local batch_size = 20
+    local function finish_sort(success, err)
+        sorting_playlist = false
+        sorting_playlist_level = nil
+        sorting_show_loading = false
+        if not success then
+            msg.error('playlist order: playlist-move failed: ' .. tostring(err))
+        end
+        mp.add_timeout(0.08, function()
+            if not visible then return end
+            refresh_menu_snapshot()
+            local ow, oh = get_osd()
+            if ow and oh and recompute_open_playlist_scrolls then
+                recompute_open_playlist_scrolls(ow, oh)
+            end
+            render()
+        end)
+    end
+
+    local function process_batch()
+        if not sorting_playlist then return end
+        local processed = 0
+        while dst <= n - 2 and processed < batch_size do
+            local ok, err = pcall(mp.commandv, 'playlist-move', tostring(n - 1), tostring(dst))
+            if not ok then
+                finish_sort(false, err)
+                return
+            end
+            dst = dst + 1
+            processed = processed + 1
+        end
+
+        if dst <= n - 2 then
+            -- 让出事件循环，loading 可持续转动，菜单也能响应重绘。
+            mp.add_timeout(0, process_batch)
+        else
+            finish_sort(true)
+        end
+    end
+
+    -- 先让界面显示 loading，再开始第一批移动。
+    mp.add_timeout(0, process_batch)
+    return true
 end
 
 local function setup_bindings()
@@ -1555,7 +1757,11 @@ local function setup_bindings()
     end)
     bind('MBTN_LEFT','menu-left-click',function()
         local mx,my=get_mouse()
-        local l,i=hit_test(mx,my)
+        local l,i,part=hit_test(mx,my)
+        if part == 'playlist-sort' then
+            if not sorting_playlist then toggle_playlist_order(l) end
+            return
+        end
         if not l or not i then hide(); return end
         local it=menu_at(l)[i]
         if not it or it.type=='separator' or state_has(it,'disabled') then hide(); return end
@@ -1606,8 +1812,23 @@ end
 local function on_mouse_move()
     if not visible then return end
     local x,y=get_mouse()
-    local l,i=hit_test(x,y)
-    if not l or not i then return end
+    local l,i,part=hit_test(x,y)
+
+    -- 排序按钮没有菜单项 index，必须单独处理鼠标悬停并触发重绘。
+    if part == 'playlist-sort' then
+        if hover_sort_level ~= l then
+            hover_sort_level = l
+            render()
+        end
+        return
+    end
+
+    local sort_hover_cleared = hover_sort_level ~= nil
+    hover_sort_level = nil
+    if not l or not i then
+        if sort_hover_cleared then render() end
+        return
+    end
 
     local list=menu_at(l)
     local it=list and list[i]
@@ -1632,14 +1853,15 @@ local function on_mouse_move()
         cancel_hover_timer()
     end
 
-    if changed and not rendered then render() end
+    if (changed or sort_hover_cleared) and not rendered then render() end
 end
 
-local function refresh_menu_snapshot()
+refresh_menu_snapshot = function()
     pcall(mp.commandv, 'script-message', 'menu-refresh-dynamic')
     local ok, data = pcall(mp.get_property_native, menu_prop)
     if ok and type(data) == 'table' then
         items = data
+        clear_measure_cache()
         normalize_menu(items)
         items_dirty = false
         return true
@@ -1658,13 +1880,6 @@ local function open_hover_now(l, i)
         return true
     end
     if o.click_to_show_submenus then return false end
-
-    if it._playlist_total or it._playlist_current_menu_index then
-        refresh_menu_snapshot()
-        list=menu_at(l)
-        it=list and list[i]
-        if not it or it.type~='submenu' then return false end
-    end
 
     open_path[l]=i
     for k=#open_path,l+1,-1 do open_path[k]=nil end
@@ -1711,6 +1926,7 @@ local function show(attempt)
         scroll_offsets={}
         rects={}
         hover_level,hover_index=nil,nil
+        hover_sort_level=nil
         selected_level=1
         selected_index=first_selectable(items)
         local sow, soh = get_osd()
@@ -1747,6 +1963,7 @@ mp.add_timeout(0,function()
 end)
 
 mp.observe_property(menu_prop,'native',function(_,v)
+    clear_measure_cache()
     if type(v)=='table' then
         items=v
         items_dirty=true
@@ -1758,7 +1975,7 @@ mp.observe_property(menu_prop,'native',function(_,v)
 end)
 mp.observe_property('mouse-pos','native',function() on_mouse_move() end)
 
-local function recompute_open_playlist_scrolls(ow, oh)
+recompute_open_playlist_scrolls = function(ow, oh)
     if not ow or not oh then return end
     for level=2,#open_path+1 do
         local parent_list=menu_at(level-1)
@@ -2446,6 +2663,12 @@ end)
 mp.register_event('end-file',hide)
 mp.register_event('shutdown',hide)
 mp.add_periodic_timer(0.04,function() if visible then on_mouse_move() end end)
+mp.add_periodic_timer(0.12,function()
+    if visible and sorting_playlist and sorting_show_loading then
+        sorting_spinner_frame = sorting_spinner_frame % #sorting_spinner_glyphs + 1
+        render()
+    end
+end)
 
 msg.info('cross-platform menu backend loaded as '..BACKEND_NAME)
 
