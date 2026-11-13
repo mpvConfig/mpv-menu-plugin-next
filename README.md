@@ -63,9 +63,9 @@ portable_config/
 
 ---
 
-### 磨砂玻璃 menu_style-gray-glass
+### 磨砂玻璃 gray-glass
 
-🎨 [menu_style-gray-glass.conf](https://github.com/mpvConfig/mpv-menu-plugin-next/tree/main/example/script-opts/menu_style-gray-glass.conf)
+🎨 [menu-gray-glass.conf](https://github.com/mpvConfig/mpv-menu-plugin-next/tree/main/example/script-opts/menu-gray-glass.conf)
 
 ![image](./doc/images/Snipaste_2026-10-10_15-08-58.jpg)
 
@@ -73,7 +73,7 @@ portable_config/
 
 ### macos 白色风格 macos-white-style
 
-🎨 [menu_style-macos-white.conf](https://github.com/mpvConfig/mpv-menu-plugin-next/tree/main/example/script-opts/menu_style-macos-white.conf)
+🎨 [menu-macos-white.conf](https://github.com/mpvConfig/mpv-menu-plugin-next/tree/main/example/script-opts/menu-macos-white.conf)
 
 ![image](./doc/images/Snipaste_2026-08-16_01-04-38.jpg)
 
@@ -81,7 +81,7 @@ portable_config/
 
 ### macos 深色风格 macos-dark-style
 
-🎨 [menu_style-macos-dark.conf](https://github.com/mpvConfig/mpv-menu-plugin-next/tree/main/example/script-opts/menu_style-macos-dark.conf)
+🎨 [menu-macos-dark.conf](https://github.com/mpvConfig/mpv-menu-plugin-next/tree/main/example/script-opts/menu-macos-dark.conf)
 
 ![image](./doc/images/Snipaste_2026-08-16_01-10-14.jpg)
 

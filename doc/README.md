@@ -147,6 +147,7 @@ portable_config/script-opts/menu_style.conf
 | `scale_fullscreen`             |       1.2 | 全屏状态/最大化缩放倍率                                                             |
 | `menu_font_scale`              |         1 | 设置字体大小-菜单文字缩放倍数，作用在 `font_size_ratio` 之上                        |
 | `macos_font_scale`             |         1 | macOS 字体视觉补偿-用于设置 macOS 缩放大小                                          |
+| `flatten_menu`                 |      true | 是否平铺显示多级菜单；空间不足时自动压缩面板宽度                                    |
 | `separator_width`              |         1 | 分隔线宽度                                                                          |
 | `separator_height`             |        13 | 分隔线高度                                                                          |
 | `padding_x`                    |        12 | 菜单内容左右内边距                                                                  |
